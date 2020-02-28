@@ -11,24 +11,23 @@ public struct RandomArrayGenerator: InputGeneratorProtocol {
     public init() {}
     
     public func generate(_ size: Int) -> [Int] {
-        var values: [Int] = Array(0 ..< size)
-        values.shuffle()
-        return values
+        (0 ..< size).shuffled()
     }
 }
 
 public struct PairGenerator<G1: InputGeneratorProtocol, G2: InputGeneratorProtocol>: InputGeneratorProtocol {
     public typealias Value = (G1.Value, G2.Value)
     
-    var g1: G1
-    var g2: G2
-    public init(_ g1: G1, _ g2: G2) {
-        self.g1 = g1
-        self.g2 = g2
+    var firstGenerator: G1
+    var secondGenerator: G2
+    
+    public init(_ firstGenerator: G1, _ secondGenerator: G2) {
+        self.firstGenerator = firstGenerator
+        self.secondGenerator = secondGenerator
     }
     
     public func generate(_ size: Int) -> Value {
-        return (g1.generate(size), g2.generate(size))
+        (firstGenerator.generate(size), secondGenerator.generate(size))
     }
 }
 
@@ -40,6 +39,6 @@ public struct ClosureGenerator<Value>: InputGeneratorProtocol {
     }
     
     public func generate(_ size: Int) -> Value {
-        return generator(size)
+        generator(size)
     }
 }

@@ -15,7 +15,7 @@ class BenchmarkTask<Input> {
     }
 
     func generate(input: Input) -> ((BenchmarkTimer) -> Void)? {
-        return self.body(input)
+        body(input)
     }
 }
 
@@ -69,4 +69,3 @@ extension Benchmark where Input == ([Int], [Int]) {
         self.init(title: title, inputGenerator: PairGenerator(RandomArrayGenerator(), RandomArrayGenerator()))
     }
 }
-

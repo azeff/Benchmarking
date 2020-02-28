@@ -6,7 +6,8 @@ import Foundation
 import QuartzCore
 
 public class BenchmarkTimer {
-    var elapsedTime: TimeInterval? = nil
+   
+    private var elapsedTime: TimeInterval? = nil
 
     @inline(never)
     static func measure(_ body: (BenchmarkTimer) -> Void) -> TimeInterval {

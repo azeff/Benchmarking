@@ -67,11 +67,11 @@ extension Benchmark {
         if tasks.isEmpty {
             tasks = taskTitles.map { self.tasks[$0]! }
         }
-        var sizes = options.sizes
+        let sizes = options.sizes
         guard !sizes.isEmpty else {
             throw OptionError("Need at least one size")
         }
-        if let i = sizes.index(where: { $0 < 1 }) {
+        if let i = sizes.firstIndex(where: { $0 < 1 }) {
             throw OptionError("Invalid size \(sizes[i])")
         }
         guard options.iterations > 0 else {

@@ -32,7 +32,7 @@ extension TimeInterval {
     }
 }
 
-internal struct OutputFile {
+struct OutputFile {
     let fileHandle: FileHandle
     var fileDescriptor: Int32 { return fileHandle.fileDescriptor }
     
@@ -45,17 +45,17 @@ internal struct OutputFile {
     }
     
     func write(_ data: Data) throws {
-        try data.withUnsafeBytes { (p: UnsafePointer<UInt8>) -> Void in
-            var p = p
-            var c = data.count
-            while c > 0 {
-                let r = Darwin.write(fileHandle.fileDescriptor, UnsafeRawPointer(p), c)
-                if r == -1 {
+        try data.withUnsafeBytes { (buffPointer: UnsafeRawBufferPointer) in
+            guard var pointer = buffPointer.baseAddress else { return }
+            var count = buffPointer.count
+            while count > 0 {
+                let bytesWritten = Darwin.write(fileHandle.fileDescriptor, pointer, count)
+                if bytesWritten == -1 {
                     throw POSIXError(POSIXErrorCode(rawValue: errno)!)
                 }
-                precondition(r > 0 && r <= c)
-                c -= r
-                p += r
+                precondition(bytesWritten > 0 && bytesWritten <= count)
+                count -= bytesWritten
+                pointer += bytesWritten
             }
         }
     }
@@ -68,7 +68,7 @@ internal struct OutputFile {
     }
 }
 
-internal struct PrettyOutput: OutputProtocol {
+struct PrettyOutput: OutputProtocol {
     private let output: OutputFile
     private let isatty: Bool
 
@@ -131,6 +131,7 @@ internal struct PrettyOutput: OutputProtocol {
     func begin(task: String, size: Int) throws {
         try output.write("\(dim("Measuring")) \(t(task)) \(dim("for size")) \(s(size))\(dim("..."))")
     }
+    
     func progress(task: String, size: Int, time: TimeInterval) throws {
         if time > 0.1 {
             try output.write(" \(highlight(i(time), .gray))")
@@ -139,12 +140,13 @@ internal struct PrettyOutput: OutputProtocol {
             try output.write(".")
         }
     }
+    
     func finish(task: String, size: Int, time: TimeInterval) throws {
         try output.write(" \(highlight("min:", .red)) \(highlight(i(time), .brightRed))\n")
     }
 }
 
-internal struct JSONOutput: OutputProtocol {
+struct JSONOutput: OutputProtocol {
     let output: OutputFile
     let encoder: JSONEncoder
     
@@ -163,9 +165,11 @@ internal struct JSONOutput: OutputProtocol {
     func begin(task: String, size: Int) throws {
         try send(.begin(task: task, size: size))
     }
+    
     func progress(task: String, size: Int, time: TimeInterval) throws {
         // Do nothing
     }
+    
     func finish(task: String, size: Int, time: TimeInterval) throws {
         try send(.finish(task: task, size: size, time: time))
     }
