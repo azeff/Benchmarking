@@ -7,11 +7,17 @@ let package = Package(
         .library(name: "Benchmarking", targets: ["Benchmarking", "BenchmarkIPC"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/attaswift/OptionParser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "0.0.2"),
     ],
     targets: [
         .target(name: "BenchmarkIPC", path: "BenchmarkIPC"),
-        .target(name: "Benchmarking", dependencies: ["OptionParser", "BenchmarkIPC"], path: "Benchmarking"),
+        .target(
+            name: "Benchmarking",
+            dependencies: [
+                "BenchmarkIPC",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            path: "Benchmarking"),
     ],
     swiftLanguageVersions: [.v5]
 )

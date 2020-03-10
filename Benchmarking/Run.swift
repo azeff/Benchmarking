@@ -3,14 +3,8 @@
 // For licensing information, see the file LICENSE.md in the Git repository above.
 
 import Foundation
-import OptionParser
 import BenchmarkIPC
-
-extension RunOptions.OutputFormat: OptionValue {}
-
-struct AttabenchOptions {
-    var reportFile: String = ""
-}
+import ArgumentParser
 
 extension Benchmark {
     func listTasks() {
@@ -116,67 +110,25 @@ extension Benchmark {
             try self.run(options, output: JSONOutput(to: output))
         }
     }
+}
 
+extension Benchmark {
     public func start() {
-        let parser = OptionParser<Void>(
-            docs: "",
-            initial: (),
-            options: [],
-            commands: [
-                .command(for: Void.self, name: "list", docs: "List available tasks.",
-                         initial: { _ in () },
-                         options: [],
-                         parameters: [],
-                         action: { _ in self.listTasks() }),
-                .command(for: AttabenchOptions.self,
-                         name: "attabench", docs: "Run benchmarks inside an Attabench session",
-                         initial: { _ in AttabenchOptions() },
-                         parameters: [
-                            .required(for: \.reportFile, metavariable: "<path>", docs: "Path to the report fifo")],
-                         action: { options in
-                            try self.attarun(reportFile: options.reportFile) }),
-                .command(for: RunOptions.self,
-                         name: "run", docs: "Run selected benchmarks.",
-                         initial: { _ in RunOptions() },
-                         options: [
-                            .array(of: String.self, for: \.tasks,
-                                   name: "tasks", metavariable: "<name>",
-                                   docs: "Benchmark tasks to run (default: all benchmarks)"),
-                            .flag(for: \.tasks, value: [], name: "all", docs: "Run all benchmarks"),
-                            .array(of: Int.self, for: \.sizes,
-                                   name: "sizes", docs: "Input sizes to measure"),
-                            .value(for: \.iterations,
-                                   name: "iterations", metavariable: "<int>",
-                                   docs: "Number of iterations to run (default: 1)"),
-                            .value(for: \.minimumDuration,
-                                   name: "min-duration", metavariable: "<seconds>",
-                                   docs: "Repeat each task for at least this amount of seconds (default: 0.0)"),
-                            .value(for: \.maximumDuration,
-                                   name: "max-duration", metavariable: "<seconds>",
-                                   docs: "Stop repeating tasks after this amount of time (default: +infinity)"),
-                            .value(for: \.outputFormat,
-                                   name: "format", metavariable: "pretty|json",
-                                   docs: "Output format (default: pretty)")],
-                         parameters: [],
-                         action: { options in try self.run(options) })])
-
         do {
-            try parser.parse()
-            exit(0)
-        }
-        catch let error as OptionError {
-            complain(error.message)
-            exit(1)
-        }
-        catch {
-            complain(error.localizedDescription)
-            exit(1)
+            Benchmarking.listTasks = listTasks
+            Benchmarking.attarun = attarun
+            Benchmarking.run = { options in try self.run(options) }
+            
+            let main = try MainCommand.parseAsRoot()
+            try main.run()
+        } catch {
+            // Print info about error or help and exit.
+            MainCommand.exit(withError: error)
         }
     }
 }
 
-
-struct TaskInstance<Input> {
+private struct TaskInstance<Input> {
     let task: BenchmarkTask<Input>
     let size: Int
     let instance: (BenchmarkTimer) -> Void
@@ -192,4 +144,131 @@ struct TaskInstance<Input> {
     func run() -> TimeInterval {
         return BenchmarkTimer.measure(instance)
     }
+}
+
+private struct OptionError: Error, CustomStringConvertible {
+    let message: String
+
+    init(_ message: String) {
+        self.message = message
+    }
+
+    public var description: String { return message }
+}
+
+// MARK: - Argument Parser Commands
+
+private var listTasks: () throws -> Void = {
+    fatalError()
+}
+
+private var attarun: (String) throws -> Void = { reportFilePath in
+    fatalError()
+}
+
+private var run: (RunOptions) throws -> Void = { options in
+    fatalError()
+}
+
+private struct ListCommand: ParsableCommand {
+
+    static var configuration = CommandConfiguration(
+        commandName: "list",
+        abstract: "List available tasks"
+    )
+
+    func run() throws {
+        try listTasks()
+    }
+}
+
+private struct AttabenchCommand: ParsableCommand {
+
+    static var configuration = CommandConfiguration(
+        commandName: "attabench",
+        abstract: "Run benchmarks inside an Attabench session"
+    )
+
+    @Argument(help: .init("Path to the report fifo", valueName: "path"))
+    var reportFilePath: String
+
+    func run() throws {
+        try attarun(reportFilePath)
+    }
+}
+
+private struct RunCommand: ParsableCommand {
+    enum OutputFormat: String, CaseIterable, ExpressibleByArgument {
+        case pretty
+        case json
+    }
+
+    static var configuration = CommandConfiguration(
+        commandName: "run",
+        abstract: "Run selected benchmarks"
+    )
+
+    @Option(
+        name: [.short, .long],
+        help: "Benchmark tasks to run."
+    )
+    var tasks: [String]
+
+    @Flag(
+        name: [.short, .customLong("all-tasks")],
+        help: "Run all benchmark tasks"
+    )
+    var all: Bool
+
+    @Option(
+        name: [.short, .long],
+        help: "Input sizes to measure"
+    )
+    var sizes: [Int]
+
+    @Option(
+        name: [.short, .long],
+        default: 1,
+        help: "Number of iterations to run"
+    )
+    var iterations: Int
+
+    @Option(
+        default: 0,
+        help: "Repeat each task for at least this amount of seconds"
+    )
+    var minDuration: Double
+
+    @Option(
+        default: Double.infinity,
+        help: "Stop repeating tasks after this amount of time"
+    )
+    var maxDuration: Double
+
+    @Option(
+        name: [.short, .long],
+        default: .pretty,
+        help: "Output format: 'pertty' or 'json'"
+    )
+    var format: OutputFormat
+
+    func run() throws {
+        let options = RunOptions(
+            tasks: all ? [] : tasks,
+            sizes: sizes,
+            outputFormat: RunOptions.OutputFormat(rawValue: format.rawValue)!,
+            iterations: iterations,
+            minimumDuration: minDuration,
+            maximumDuration: maxDuration
+        )
+        
+        try Benchmarking.run(options)
+    }
+}
+
+struct MainCommand: ParsableCommand {
+    static var configuration = CommandConfiguration(
+        commandName: "",
+        subcommands: [ListCommand.self, AttabenchCommand.self, RunCommand.self]
+    )
 }
