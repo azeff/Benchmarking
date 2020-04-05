@@ -7,7 +7,7 @@ let package = Package(
         .library(name: "Benchmarking", targets: ["Benchmarking", "BenchmarkIPC"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "0.0.2"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "0.0.4"),
     ],
     targets: [
         .target(name: "BenchmarkIPC", path: "BenchmarkIPC"),
