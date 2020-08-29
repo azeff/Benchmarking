@@ -119,7 +119,7 @@ extension Benchmark {
             Benchmarking.attarun = attarun
             Benchmarking.run = { options in try self.run(options) }
             
-            let main = try MainCommand.parseAsRoot()
+            var main = try MainCommand.parseAsRoot()
             try main.run()
         } catch {
             // Print info about error or help and exit.
