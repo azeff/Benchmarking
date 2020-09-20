@@ -218,7 +218,7 @@ private struct RunCommand: ParsableCommand {
         name: [.short, .customLong("all-tasks")],
         help: "Run all benchmark tasks"
     )
-    var all: Bool
+    var all: Bool = false
 
     @Option(
         name: [.short, .long],
@@ -228,29 +228,25 @@ private struct RunCommand: ParsableCommand {
 
     @Option(
         name: [.short, .long],
-        default: 1,
         help: "Number of iterations to run"
     )
-    var iterations: Int
+    var iterations: Int = 1
 
     @Option(
-        default: 0,
         help: "Repeat each task for at least this amount of seconds"
     )
-    var minDuration: Double
+    var minDuration: Double = 0
 
     @Option(
-        default: Double.infinity,
         help: "Stop repeating tasks after this amount of time"
     )
-    var maxDuration: Double
+    var maxDuration: Double = Double.infinity
 
     @Option(
         name: [.short, .long],
-        default: .pretty,
         help: "Output format: 'pertty' or 'json'"
     )
-    var format: OutputFormat
+    var format: OutputFormat = .pretty
 
     func run() throws {
         let options = RunOptions(
