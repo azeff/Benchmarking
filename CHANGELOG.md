@@ -1,3 +1,7 @@
+# 2.0 (?)
+
+Introduce protocol for benchmark description to allow benchmarks with different input generators.
+
 # 1.0.1 (2020-09-23)
 
 Swift 5 support.

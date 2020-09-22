@@ -10,10 +10,10 @@ public class BenchmarkTimer {
     private var elapsedTime: TimeInterval? = nil
 
     @inline(never)
-    static func measure(_ body: (BenchmarkTimer) -> Void) -> TimeInterval {
+    static func measure(_ body: (BenchmarkTimer) throws -> Void) rethrows -> TimeInterval {
         let timer = BenchmarkTimer()
         let start = CACurrentMediaTime()
-        body(timer)
+        try body(timer)
         let end = CACurrentMediaTime()
         return timer.elapsedTime ?? (end - start)
     }

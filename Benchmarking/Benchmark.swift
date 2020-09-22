@@ -4,68 +4,43 @@
 
 import Foundation
 
-class BenchmarkTask<Input> {
-    let title: String
-    let body: (Input) -> ((BenchmarkTimer) -> Void)?
-
-    init(_ title: String, _ body: @escaping (Input) -> ((BenchmarkTimer) -> Void)?) {
-        precondition(!title.starts(with: "-"), "Benchmark task title must not begin with '-'")
-        self.title = title
-        self.body = body
-    }
-
-    func generate(input: Input) -> ((BenchmarkTimer) -> Void)? {
-        body(input)
-    }
-}
-
-public class Benchmark<Input> {
-    public let title: String
-    public var descriptiveTitle: String? = nil
-    public var descriptiveAmortizedTitle: String? = nil
-
-    public private(set) var taskTitles: [String] = []
+public protocol Benchmark {
+    var name: String { get }
     
-    private(set) var tasks: [String: BenchmarkTask<Input>] = [:]
-    let inputGenerator: (Int) -> Input
+    func setUp(size: Int) -> Bool
+    func run() throws
+    func tearDown()
+}
 
-    public init<Generator: InputGeneratorProtocol>(title: String, inputGenerator: Generator) where Generator.Value == Input {
-        self.title = title
-        self.inputGenerator = inputGenerator.generate
+public class ClosureBenchmark<Input>: Benchmark {
+    
+    public let name: String
+    
+    private var input: Input?
+    
+    private let generator: (Int) -> Input
+    private let closure: (Input) -> Void
+    
+    public init(name: String, generator: @escaping (Int) -> Input, closure: @escaping (Input) -> Void) {
+        self.name = name
+        self.generator = generator
+        self.closure = closure
     }
-
-    public init(title: String, inputGenerator: @escaping (Int) -> Input) {
-        self.title = title
-        self.inputGenerator = inputGenerator
+    
+    public func setUp(size: Int) -> Bool {
+        input = generator(size)
+        return true
     }
-
-    public func addTask(title: String, _ body: @escaping (Input) -> ((BenchmarkTimer) -> Void)?) {
-        precondition(self.tasks[title] == nil)
-        self.taskTitles.append(title)
-        self.tasks[title] = BenchmarkTask(title, body)
+    
+    public func run() throws {
+        closure(input!)
     }
-
-    public func addSimpleTask(title: String, _ body: @escaping (Input) -> Void) {
-        self.addTask(title: title) { input in
-            return { timer in timer.measure { body(input) } }
-        }
-    }
-
-    public func addTimerTask(title: String, _ body: @escaping (Input, BenchmarkTimer) -> Void) {
-        self.addTask(title: title) { input in
-            return { timer in body(input, timer) }
-        }
+    
+    public func tearDown() {
+        input = nil
     }
 }
 
-extension Benchmark where Input == [Int] {
-    public convenience init(title: String) {
-        self.init(title: title, inputGenerator: RandomArrayGenerator())
-    }
-}
-
-extension Benchmark where Input == ([Int], [Int]) {
-    public convenience init(title: String) {
-        self.init(title: title, inputGenerator: PairGenerator(RandomArrayGenerator(), RandomArrayGenerator()))
-    }
+public func benchmark<T>(name: String, generator: @escaping (Int) -> T, closure: @escaping (T) -> Void) {
+    defaultBenchmarkSuite.add(name: name, generator: generator, closure: closure)
 }
